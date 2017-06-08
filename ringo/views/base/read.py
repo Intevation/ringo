@@ -44,4 +44,6 @@ def rest_read(request, callback=None):
     :returns: JSON object.
     """
     handle_callback(request, callback, mode="pre,default")
-    return JSONResponse(True, get_item_from_request(request))
+    item =  get_item_from_request(request)
+    handle_callback(request, callback, mode="post")
+    return JSONResponse(True, item)
