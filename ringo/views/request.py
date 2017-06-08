@@ -139,15 +139,13 @@ def handle_callback(request, callbacks, item=None, mode=None):
         callbacks = [callbacks]
     for cb in callbacks:
         # Handle callback objects.
-        if isinstance(cb, Callback) and ((cb.mode in modes) or (cb.mode is None and "default" in modes)):
+        if isinstance(cb, Callback) and (cb.mode in modes):
             # New callback objects. Only call the callback if the mode
-            # matches or if the mode of the callback is non but we are
-            # in "default" mode.
+            # matches
             item = cb(request, item)
-        elif not isinstance(cb, Callback) and ("default" in modes or None in modes):
+        elif not isinstance(cb, Callback) and ("default" in modes):
             # Old simple callabel. Only call the callback if we are in
-            # default mode or no mode is given.
-            # None.
+            # default mode.
             item = cb(request, item)
         else:
             # Otherwise ignore the callback
