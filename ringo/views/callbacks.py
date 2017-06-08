@@ -33,7 +33,7 @@ class Callback(object):
     define when to call the callback. On default the execution time is
     defined in the view."""
 
-    def __init__(self, callback, mode=None):
+    def __init__(self, callback, mode="default"):
         """Init the callback and configure its behaviour.
 
         :callback: Callable which is used as callback
@@ -41,8 +41,8 @@ class Callback(object):
         """
 
         self.callback = callback
-        if mode not in ["pre", "post", None]:
-            raise ValueError("Mode can either be None, `pre` or `post`")
+        if mode not in ["pre", "post", "default"]:
+            raise ValueError("Mode can either be `default`, `pre` or `post`")
         self.mode = mode
 
     def __call__(self, request, item):
