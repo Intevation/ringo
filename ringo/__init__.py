@@ -48,7 +48,8 @@ def setup_static_views(config):
                            path='ringo:static',
                            cache_max_age=int(http_cache))
     config.add_static_view(name='ringo-customstatic',
-                           path=settings.get('app.customstatic', 'ringo:static'),
+                           path=settings.get('app.customstatic',
+                                             'ringo:static'),
                            cache_max_age=int(http_cache))
     return config
 
