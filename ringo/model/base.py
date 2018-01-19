@@ -842,7 +842,13 @@ class BaseList(object):
             for item in self.items:
                 for field in fields:
                     expand = table_columns[field].get('expand')
-                    value = item.get_value(field, expand=expand)
+                    renderer = table_config.get_renderer(
+                        table_columns[field])
+                    if renderer:
+                        value = renderer(request, item, field,
+                                         table_config)
+                    else:
+                        value = item.get_value(field, expand=expand)
                     if hasattr(value, 'render'):
                         pretty_value = value.render(request)
                     elif isinstance(value, list):
