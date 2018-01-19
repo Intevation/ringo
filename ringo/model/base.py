@@ -196,7 +196,8 @@ class BaseItem(object):
         modul = load_modul(self)
         format_str, fields = modul.get_str_repr()
         if format_str:
-            return format_str % tuple([prettify(None, self.get_value(f)) for f in fields])
+            return format_str % tuple([prettify(None, self.get_value(f))
+                                       for f in fields])
         else:
             return "%s" % str(self.id or self.__class__)
 
@@ -311,8 +312,10 @@ class BaseItem(object):
                 options = []
                 for option in field_config.options:
                     # Handle "list" values "{"",1,2}"
-                    if str(raw_value).startswith("{") and str(raw_value).endswith("}"):
-                        for value in raw_value.strip("}").strip("{").split(","):
+                    if (str(raw_value).startswith("{")
+                            and str(raw_value).endswith("}")):
+                        for value in (raw_value.strip("}").strip("{")
+                                      .split(",")):
                             if str(value) == str(option[1]):
                                 options.append(option[0])
                     elif str(raw_value) == str(option[1]):
@@ -443,7 +446,8 @@ class BaseItem(object):
                 else:
                     setattr(self, key, value)
             except AttributeError:
-                log.warning('Not saving "%s". Attribute/Property not found' % key)
+                log.warning(('Not saving "%s". Attribute/Property not'
+                             ' found') % key)
                 if use_strict:
                     raise AttributeError(('Not setting "%s".'
                                          ' Attribute not found.') % key)
@@ -808,7 +812,8 @@ class BaseList(object):
 
         :filter_stack: Filter stack
         :request: Current request.
-        :table: Name of the table config which is used for the search defaults to "overview".
+        :table: Name of the table config which is used for the search
+                defaults to "overview".
         :returns: Filtered list of items
         """
         self.search_filter = filter_stack
@@ -817,7 +822,8 @@ class BaseList(object):
         table_columns = {}
 
         # Save cols in the tableconfig for later access while getting values.
-        for col in [col for col in table_config.get_columns() if col.get("searchable", True)]:
+        for col in [col for col in table_config.get_columns()
+                    if col.get("searchable", True)]:
             table_columns[col.get('name')] = col
 
         for search, search_field, regexpr in filter_stack:
@@ -853,9 +859,10 @@ class BaseList(object):
                         pretty_value = value.render(request)
                     elif isinstance(value, list):
                         if request and expand:
-                            value = ", ".join([request.translate(unicode(x)) for x in value])
+                            value = ", ".join([request.translate(
+                                unicode(v)) for v in value])
                         else:
-                            value = ", ".join([unicode(x) for x in value])
+                            value = ", ".join([unicode(v) for v in value])
                         pretty_value = value
                     else:
                         pretty_value = unicode(prettify(request, value))
