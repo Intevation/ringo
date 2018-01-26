@@ -7,7 +7,8 @@ from formbar.config import (
 from formbar.form import Form
 from ringo.lib.helpers import (
         get_item_modul,
-        get_app_url
+        get_app_url,
+        get_timezone
 )
 from ringo.lib.form import (
     get_eval_url,
@@ -185,7 +186,8 @@ def get_item_form(name, request, renderers=None, validators=None, values=None):
                 eval_url=get_eval_url(),
                 url_prefix=get_app_url(request),
                 locale=locale_negotiator(request),
-                values=values)
+                values=values,
+                timezone=get_timezone(request))
     # Add validators
     for validator in validators:
         form.add_validator(validator)
@@ -219,7 +221,11 @@ def get_next_form_page(form, current_page):
     :returns: ID of the next page in the form
     """
     found = False
-    for page in form.pages:
+    for element in form._config.walk(root=None, values=form.data, evaluate=True, include_layout=True):
+        if element.tag != "page":
+            continue
+        else:
+            page = element
         if found:
             return page.attrib.get("id").strip("p")
         if current_page == int(page.attrib.get("id").strip("p")):

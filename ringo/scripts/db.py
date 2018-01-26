@@ -16,7 +16,7 @@ from pyramid.paster import (
     setup_logging,
 )
 from ringo.lib.sql import DBSession, NTDBSession, setup_db_session
-from ringo.lib.helpers import get_app_location, dynamic_import
+from ringo.lib.helpers import get_app_location, dynamic_import, get_modul_by_name
 from ringo.lib.imexport import (
     JSONExporter, JSONImporter,
     CSVExporter, CSVImporter,
@@ -95,6 +95,17 @@ def get_session(config_file, transactional=True):
     else:
         NTDBSession.configure(bind=engine)
         return NTDBSession
+
+
+def get_modul(modulname, session):
+    modul_item = get_modul_by_name(modulname, session)
+    if not modul_item:
+        modules = [m.name for m in session.query(ModulItem).all()]
+        msg = "Can not load modul '{}'. Please choose one from [{}].".format(
+            modulname, ", ".join(modules))
+        print >> sys.stderr, msg
+        sys.exit(1)
+    return dynamic_import(modul_item.clazzpath)
 
 
 def copy_initial_migration_scripts(args):
@@ -188,8 +199,7 @@ def handle_db_savedata_command(args):
     path = []
     path.append(args.config)
     session = get_session(os.path.join(*path))
-    modul_clazzpath = session.query(ModulItem).filter(ModulItem.name == args.modul).all()[0].clazzpath
-    modul = dynamic_import(modul_clazzpath)
+    modul = get_modul(args.modul, session)
     data = session.query(modul).order_by(modul.id).all()
 
     if args.filter:
@@ -216,22 +226,12 @@ def handle_db_savedata_command(args):
 
     if args.format == "json":
         exporter = JSONExporter(modul, serialized=False,
-                                relations=args.include_relations,
                                 config=export_config)
-        data = prepare_data(data)
     else:
         exporter = CSVExporter(modul, serialized=False,
-                               relations=args.include_relations,
                                config=export_config)
     print exporter.perform(data)
 
-def prepare_data(applications):
-    import datetime
-    for application in applications:
-        for field, value in application.__dict__.items():
-            if isinstance(value, datetime.date):
-                application.__setattr__(field, str(value))
-    return applications
 
 def handle_db_loaddata_command(args):
     path = []
@@ -257,17 +257,11 @@ def handle_db_loaddata_command(args):
 
 
 def get_importer(session, modulname, fmt):
-    try:
-        modul_clazzpath = session.query(ModulItem).filter(ModulItem.name == modulname).all()[0].clazzpath
-        modul = dynamic_import(modul_clazzpath)
-        if fmt == "json":
-            return JSONImporter(modul, session)
-        else:
-            return CSVImporter(modul, session)
-    except:
-        modules = [m.name for m in session.query(ModulItem).all()]
-        print "Can not load modul '{}'. Please choose one from [{}].".format(modulname, ", ".join(modules))
-        sys.exit(1)
+    modul = get_modul(modulname, session)
+    if fmt == "json":
+        return JSONImporter(modul, session)
+    else:
+        return CSVImporter(modul, session)
 
 
 def do_import(session, importer, data, load_key):
@@ -278,7 +272,6 @@ def do_import(session, importer, data, load_key):
     for item, action in items:
         # Add all new items to the session
         if action.find("CREATE") > -1:
-            session.add(item)
             created += 1
         else:
             updated += 1
@@ -289,25 +282,16 @@ def handle_db_uuid_command(args):
     path = []
     path.append(args.config)
     session = get_session(os.path.join(*path))
-    modul_clazzpath = session.query(ModulItem).filter(ModulItem.name == args.modul).all()[0].clazzpath
-    modul = dynamic_import(modul_clazzpath)
+    modul = get_modul(args.modul, session)
     updated = 0
-    created = 0
     for item in session.query(modul).all():
-        if item.uuid:
-            if args.missing_only:
-                continue
-            else:
-                item.reset_uuid()
-                updated += 1
-        else:
-            item.reset_uuid()
-            created += 1
+        item.reset_uuid()
+        updated += 1
     try:
         transaction.commit()
-        print "Updated %s items, Created %s items" % (updated, created)
+        print "Updated %s items" % updated
     except:
-        print "Loading data failed!"
+        print "Reset UUIDs failed!"
 
 def _get_user_id_function():
     out = []

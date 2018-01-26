@@ -2,8 +2,9 @@ import logging
 import re
 import string
 import base64
+import sqlalchemy as sa
 from datetime import datetime
-from pyramid.threadlocal import get_current_request
+from pyramid.threadlocal import get_current_request, get_current_registry
 import formbar.converters as converters
 from ringo.lib.sql import DBSession
 
@@ -32,7 +33,14 @@ def deserialize(value, datatype):
         if iv.match(value):
             t = datetime.datetime.strptime(value, "%H:%M:%S")
             return datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
-        return converters.to_datetime(value)
+
+        # We need the configured timezone to convert the datetime into
+        # the correct timezone.
+        if get_current_registry().settings:
+            timezone = get_current_registry().settings.get("app.timezone")
+        else:
+            timezone = None
+        return converters.to_datetime(value, locale=None, timezone=timezone)
     elif datatype == "date":
         return converters.to_date(value)
     elif re_char_match.match(datatype):
@@ -58,6 +66,8 @@ def serialize(value):
         return ""
     if isinstance(value, unicode):
         return value
+    if isinstance(value, str):
+        return unicode(value)
     if isinstance(value, int):
         return unicode(value)
     if isinstance(value, float):
@@ -205,6 +215,19 @@ def dynamic_import(cl):
     return getattr(m, classname)
 
 
+def get_modul_by_name(modulname, session=DBSession):
+    # FIXME:
+    # Compatibilty mode. Older versions of Ringo added a 's' to the
+    # extensions modul name as Ringo usally uses the plural form.
+    # Newer versions use the configured extension name. So there
+    # might be a mixture of old and new modul names in the database.
+    # This code will handle this. (ti) <2016-01-04 13:50>
+    from ringo.model.modul import ModulItem
+    return session.query(ModulItem).filter(
+        sa.or_(ModulItem.name == modulname,
+               ModulItem.name == modulname + 's')).scalar()
+
+
 def import_model(clazzpath):
     """Will return the clazz defined by modul entry in the database of
     the given model. The clazzpath defines the base clazz which which
@@ -219,7 +242,7 @@ def import_model(clazzpath):
     orig_clazz = dynamic_import(clazzpath)
     # Load entry from the database for the given modul
     mid = orig_clazz._modul_id
-    modul = DBSession.query(ModulItem).filter_by(id=mid).one()
+    modul = DBSession.query(ModulItem).get(mid)
     if modul.clazzpath == clazzpath:
         return orig_clazz
     else:
@@ -323,7 +346,16 @@ def get_action_url(request, item, action):
     """
     route_name = get_action_routename(item, action)
     if isinstance(item, object):
-        return request.route_path(route_name, id=item.id)
+        # If backurl is set
+        if hasattr(request.context, "__model__"):
+            clazz = request.context.__model__
+            backurl = request.session.get('%s.backurl' % clazz)
+        else:
+            backurl = None
+        query = {}
+        if backurl:
+            query['backurl'] = backurl
+        return request.route_path(route_name, id=item.id, _query=query)
     # TODO: Is this code ever reached. See testcase (ti) <2014-02-25 23:17>
     return request.route_path(route_name)
 

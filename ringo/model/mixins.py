@@ -32,6 +32,7 @@ comments).
 import datetime
 import json
 import logging
+import re
 from sqlalchemy.ext.declarative import declared_attr
 
 from sqlalchemy import (
@@ -48,13 +49,15 @@ from sqlalchemy.orm import (
     relationship,
     backref
 )
-
+from formbar.converters import to_date
 from ringo.model import Base
 from ringo.lib.helpers import get_raw_value
 from ringo.lib.alchemy import get_columns_from_instance
 
+
 log = logging.getLogger(__name__)
 
+re_date = re.compile("\d{4}-\d{2}-\d{2}")
 
 class Mixin(object):
     """Base mixin class"""
@@ -175,12 +178,28 @@ class Blob(object):
         the attribute along the "." separated attribute name."""
         data = getattr(self, 'data')
         if data:
-            json_data = json.loads(getattr(self, 'data'))
-            if name in json_data:
-                return json_data[name]
+            # In some cases it is needed to be able to trigger getting the
+            # exapanded value without calling the get_value method. This can
+            # be achieved by accessing the attribute with a special name.
+            # Lets say you want to get the expanded value for `foo`. You get
+            # this by asking for `foo__e_x_p_a_n_d`
+            if name.endswith("__e_x_p_a_n_d"):
+                return self.get_value(name.replace("__e_x_p_a_n_d", ""),
+                                      expand=True)
+            elif name.find(".") < 0:
+                json_data = json.loads(getattr(self, 'data'))
+                if name in json_data:
+                    json_value = json_data[name]
+                    # Poor mans data type conversion.
+                    if isinstance(json_value, basestring):
+                        # Try to convert the value into a date object if it
+                        # looks like a date.
+                        if re_date.match(json_value):
+                            return to_date(json_value)
+                    return json_value
         return get_raw_value(self, name)
 
-    def set_values(self, values, use_strict=False):
+    def set_values(self, values, use_strict=False, request=None):
         """Will set the given values into Blobform items. This function
         overwrites the default behavior of the BaseItem and takes care
         that the data will be saved in the data attribute as JSON
@@ -191,7 +210,7 @@ class Blob(object):
             # Ignore private form fields
             if key.startswith('_'):
                 continue
-            if key in columns:
+            if key in columns or key.find(".") > -1:
                 log.debug("Setting value '%s' for '%s' in DB" % (value, key))
                 setattr(self, key, value)
             else:
