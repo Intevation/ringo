@@ -6,6 +6,9 @@
       ## The value is changed by JS in case the user clicks on the
       ## button to change the state.
       <input type="hidden" name="${field.name}" id="${field.id}" value="${field.get_value()}" datatype="integer"/>
+      % if field.renderer.prefix:
+        <input type="hidden" name="_new_${field.name}" id="${field.id}" value=""/>
+      % endif
   </div>
   % if state.get_description(request.user):
     <p><small><strong>${_('Description')}:</strong>
@@ -16,9 +19,15 @@
     % for num, trans in enumerate(state.get_transitions()):
       <button class="btn btn-default btn-block" type="submit" id="btn_state_${num}_${field.name}">${_(trans._label)}</button>
       <script>
+      % if field.renderer.prefix:
+        $('#btn_state_${num}_${field.name}').click(function() {
+          $('input[name="_new_${field.name}"]').val(${trans._end_state._id})
+        })
+     % else:
         $('#btn_state_${num}_${field.name}').click(function() {
           $('input[name="${field.name}"]').val(${trans._end_state._id})
         })
+     % endif
       </script>
     % endfor
   % endif
