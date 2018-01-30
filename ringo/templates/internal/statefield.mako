@@ -6,9 +6,7 @@
       ## The value is changed by JS in case the user clicks on the
       ## button to change the state.
       <input type="hidden" name="${field.name}" id="${field.id}" value="${field.get_value()}" datatype="integer"/>
-      % if field.renderer.prefix:
-        <input type="hidden" name="_new_${field.name}" id="${field.id}" value=""/>
-      % endif
+      <input type="hidden" name="_new_${field.name}" id="${field.id}" value=""/>
   </div>
   % if state.get_description(request.user):
     <p><small><strong>${_('Description')}:</strong>
@@ -19,21 +17,15 @@
     % for num, trans in enumerate(state.get_transitions()):
       <button class="btn btn-default btn-block" type="submit" id="btn_state_${num}_${field.name}">${_(trans._label)}</button>
       <script>
-      % if field.renderer.prefix:
-        $('#btn_state_${num}_${field.name}').click(function() {
+      $('#btn_state_${num}_${field.name}').click(function() {
           $('input[name="_new_${field.name}"]').val(${trans._end_state._id})
         })
-     % else:
-        $('#btn_state_${num}_${field.name}').click(function() {
-          $('input[name="${field.name}"]').val(${trans._end_state._id})
-        })
-     % endif
       </script>
     % endfor
   % endif
 % elif field.renderer.layout == "simple":
 <label for="${field.id}">${_('State')}</label>
-<select id="${field.id}" name="${field.name}" class="form-control" no-dirtyable="true">
+<select id="${field.id}" name="_new_${field.name}" class="form-control" no-dirtyable="true">
   <option value="${state._id}" selected="selected">${_(state._label)}</option>
   % for trans in state.get_transitions():
       <option value="${trans._end_state._id}">${_(trans._label)}</option>
@@ -48,7 +40,7 @@
     % if not field.readonly:
     <p>
       <strong>${_('State transition')}:</strong><br/>
-      <select id="${field.id}" name="${field.name}" class="form-control" no-dirtyable="true">
+      <select id="${field.id}" name="_new_${field.name}" class="form-control" no-dirtyable="true">
         <option value="${state._id}" selected="selected">${_('No Transition')}</option>
         % for trans in state.get_transitions():
             <option value="${trans._end_state._id}">${_(trans._label)}</option>
@@ -79,31 +71,3 @@
 </div>
 % endif
 </div>
-<div id="statefieldinfo" class="alert alert-info" role="info">
-  ${_('Please save outstanding changes before changing the state. To discard the changes please reload the page.')}
-</div>
-
-<script>
-  $(function() {
-    $("#${field.id}").change(function() {
-      var selected = $(this).val();
-      $(".result-state").each(function(selected) {
-        $(this).hide();
-      });
-      $("#result-state-"+selected).show();
-    });
-    $("div.formbar-form").on("clean", function() {
-        $('#statefieldinfo').hide();
-        $('#statefield button, #statefield select').each(function() {
-          $(this).prop('disabled', false);
-        })
-    });
-    $("div.formbar-form").on("dirty", function() {
-        $('#statefieldinfo').show();
-        $('#statefield button, #statefield select').each(function() {
-          $(this).prop('disabled', true);
-        })
-    });
-  });
-
-</script>
