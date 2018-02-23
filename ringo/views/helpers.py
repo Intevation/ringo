@@ -4,7 +4,7 @@ from formbar.config import (
     Config,
     parse
 )
-from formbar.form import Form
+from formbar.form import Form, create_dependencies
 from ringo.lib.helpers import (
         get_item_modul,
         get_app_url,
@@ -166,7 +166,7 @@ def get_item_form(name, request, renderers=None, validators=None, values=None):
     clazz = request.context.__model__
     name = request.session.get("%s.form" % clazz) or name
 
-    ## handle blobforms
+    # handle blobforms
     if isinstance(item, Blobform):
         # TODO: Why not use the get_form_config method here. This can
         # handle Blobforms and usual form configs. () <2014-08-26 22:21>
@@ -187,7 +187,8 @@ def get_item_form(name, request, renderers=None, validators=None, values=None):
                 url_prefix=get_app_url(request),
                 locale=locale_negotiator(request),
                 values=values,
-                timezone=get_timezone(request))
+                timezone=get_timezone(request),
+                dependencies=create_dependencies(request))
     # Add validators
     for validator in validators:
         form.add_validator(validator)

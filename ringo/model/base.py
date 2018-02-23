@@ -454,6 +454,14 @@ class BaseItem(object):
                     raise AttributeError(('Not setting "%s".'
                                          ' Attribute not found.') % key)
 
+    def get_new_state(self, request, key):
+        if request is None:
+            return None
+
+        state_id = request.params.get("_new_" + key)
+        if state_id and state_id.isdigit():
+            return int(state_id)
+
     def save(self, data, request=None):
         """Method to set new values and 'saving' changes to the item. In
         contrast to just setting the values saving means triggering
@@ -499,7 +507,7 @@ class BaseItem(object):
         # Handle statechange
         if isinstance(self, StateMixin):
             for key in self.list_statemachines():
-                new_state_id = data.get(key)
+                new_state_id = self.get_new_state(request, key)
                 old_state_id = old_values.get(key)
                 if ((new_state_id and old_state_id) and
                    (new_state_id != old_state_id)):

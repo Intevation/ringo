@@ -11,8 +11,7 @@ from pyramid.httpexceptions import (
 from pyramid.security import forget
 from pyramid.view import view_config
 from pyramid.compat import urlparse
-from formbar.form import Form, Validator
-
+from formbar.form import Form, Validator, create_dependencies
 from ringo.views.base import create, rest_create, update
 from ringo.views.helpers import get_item_from_request, get_current_form_page
 
@@ -22,7 +21,9 @@ from ringo.views.request import (
 
 from ringo.lib.form import get_form_config
 from ringo.lib.helpers import import_model, get_action_routename
-from ringo.lib.security import verify_password, load_user, encrypt_password, has_permission
+from ringo.lib.security import (
+    verify_password, load_user, encrypt_password, has_permission
+)
 from ringo.lib.sql.cache import invalidate_cache
 
 User = import_model('ringo.model.user.User')
@@ -269,7 +270,8 @@ def changepassword(request):
                 change_page_callback={'url': 'set_current_form_page',
                                       'item': clazz.__tablename__,
                                       'itemid': id},
-                request=request, csrf_token=request.session.get_csrf_token())
+                request=request, csrf_token=request.session.get_csrf_token(),
+                dependencies=create_dependencies(request))
 
     if request.POST:
         mapping = {'item': item}
@@ -346,7 +348,8 @@ def removeaccount(request):
                 change_page_callback={'url': 'set_current_form_page',
                                       'item': clazz.__tablename__,
                                       'itemid': id},
-                request=request, csrf_token=request.session.get_csrf_token())
+                request=request, csrf_token=request.session.get_csrf_token(),
+                dependencies=create_dependencies(request))
 
     if request.POST:
         mapping = {'item': item}
